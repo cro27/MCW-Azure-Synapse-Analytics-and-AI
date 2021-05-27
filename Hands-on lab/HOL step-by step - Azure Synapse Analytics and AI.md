@@ -61,8 +61,9 @@ Microsoft and the trademarks listed at <https://www.microsoft.com/en-us/legal/in
   - [Exercise 7: Machine Learning](#exercise-7-machine-learning)
     - [Task 1: Create a SQL Datastore and source Dataset](#task-1-create-a-sql-datastore-and-source-dataset)
     - [Task 2: Create compute infrastructure](#task-2-create-compute-infrastructure)
-    - [Task 3: Use a notebook in AML Studio to prepare data and create a Product Seasonality Classifier model using XGBoost](#task-3-use-a-notebook-in-aml-studio-to-prepare-data-and-create-a-product-seasonality-classifier-model-using-xgboost)
-    - [Task 4: Leverage Automated ML to create and deploy a Product Seasonality Classifier model](#task-4-leverage-automated-ml-to-create-and-deploy-a-product-seasonality-classifier-model)
+    - [Task 3: Link Azure Machine Learning to Azure Synapse Analytics](#task-3-Link-Azure-Machine-Learning-to-Azure-Synapse-Analytics)
+    - [Task 4: Use a notebook in Synapse studio to prepare data and leverage Automate ML to create and deploy a Product Seasonality Classifier model](#task-4-Use-a-notebook-in-Synapse-studio-to-prepare-data-and-leverage-Automate-ML-to-create-and-deploy-a-Product-Seasonality-Classifier-model)
+    - [Task 5: Launch predictions with the SQL scoring wizard](#task-5-Launch-predictions-with-the-SQL-scoring-wizard)
   - [Exercise 8: Monitoring](#exercise-8-monitoring)
     - [Task 1: Workload importance](#task-1-workload-importance)
     - [Task 2: Workload isolation](#task-2-workload-isolation)
@@ -1759,7 +1760,9 @@ As an alternative to column level security, SQL Administrators also have the opt
 
 Using Azure Synapse Analytics, data scientists are no longer required to use separate tooling to create and deploy machine learning models.
 
-In this exercise, you will create multiple machine learning models. You will learn how to consume these models in your notebook. You will also deploy a model as a web service to Azure Container Instances and consume the service.
+In this exercise, you will create multiple machine learning models both in the notebook and in Azure Machine Learning using AutoML. You will aslo learn how to consume these models in your notebook, and use them in T-SQL.
+
+**Optional**: You can also deploy a model as a web service to Azure Container Instances and consume the service.
 
 ### Task 1: Create a SQL Datastore and source Dataset
 
@@ -1830,6 +1833,16 @@ In this exercise, you will create multiple machine learning models. You will lea
 
 ### Task 2: Create compute infrastructure
 
+Azure Machine Learning provides multiple compute options: 
+
+- A compute instance is a fully configured and managed development environment in the cloud. You can also use the instance as a training compute target or for an inference target for development and testing. A compute instance can run multiple jobs in parallel and has a job queue. As a development environment, a compute instance cannot be shared with other users in your workspace.
+
+- For production grade model training, use an Azure Machine Learning distributed compute cluster with multi-node scaling capabilities. You have a choice of CPU or GPU compute nodes in the cloud
+
+- You can also bring your own compute and use resources like Azure Databricks.
+
+- For deployment you can run the model on Azure Container Instance, or use Azure Kubernetes Service cluster for production grade model deployment.
+
 1. From the left menu of Machine Learning Studio, select **Compute**.
 
 2. On the **Compute** screen with the **Compute instances** tab selected. Choose the **Create** button.
@@ -1872,72 +1885,74 @@ In this exercise, you will create multiple machine learning models. You will lea
 
     ![The new compute cluster configure settings form is displayed populated with the preceding values.](media/aml_cluster_configsettings.png "The new compute cluster Configure settings form")
 
-### Task 3: Use a notebook in AML Studio to prepare data and create a Product Seasonality Classifier model using XGBoost
+### Task 3: Link Azure Machine Learning to Azure Synapse Analytics
 
-1. In Azure Machine Learning (AML) Studio, select **Notebooks** from the left menu.
+Linking Azure Synapse Analytics workspace to an Azure Machine Learning workspace allows you to leverage Azure Machine Learning from various experiences in Synapse. For example:
 
-2. In the **Notebooks** pane, select the **Upload** icon from the toolbar.
+- Run your Azure Machine Learning pipelines as a step in your Synapse pipelines. 
 
-    ![In Azure Machine Learning Studio, the Notebooks item is selected from the left menu, and the Upload Icon is highlighted in the Notebooks panel.](media/aml_uploadnotebook_menu.png "Upload notebook")
+- Enrich your data with predictions by bringing a machine learning model from the Azure Machine Learning model registry and score the model in Synapse SQL pools. 
 
-3. In the **Open** dialog, select **Hands-on lab/artifacts/ProductSeasonality_sklearn.ipynb**. When prompted, check the boxes to **Overwrite if already exists** and **I trust contents of this file** and select **Upload**.
+>Please follow this Quickstart: [Create a new Azure Machine Learning linked service in Synapse](https://docs.microsoft.com/en-gb/azure/synapse-analytics/machine-learning/quickstart-integrate-azure-machine-learning) to link the workspaces. 
+This is required to complete this exercise.
 
-    ![A dialog is displayed with the Overwrite if already exists and the I trust contents of this file checkboxes checked.](media/aml_notebook_uploadwarning.png "File upload warning dialog")
+### Task 4: Use a notebook in Synapse studio to prepare data and leverage Automate ML to create and deploy a Product Seasonality Classifier model.
 
-4. In the top toolbar of the notebook, expand the **Editors** item, and select **Edit in Jupyter**.
+1. In Synapse Studio, select **Develop** from the left hand menu and then select **Notebooks**. Select the pre-loaded Python notebook `ASAMCW - Exercise 7 - Machine Learning`. 
 
-    ![On the notebook toolbar, the Editors item is expanded with the Edit in Jupyter item selected.](media/aml_notebook_editinjupyter.png "Edit in Jupyter")
+ ![The Synapse Studio Notebook screen is shown.](media/Synapse_Notebook_open.png "The Synapse Studio Notebook screen")
 
-5. Review and run each cell in the notebook individually to gain understanding of the functionality being demonstrated.
+2. Examine the notebook. 
 
->**Note**: Running this notebook in its entirety is required for the next task.
+   - The notebook uses source data from SQL Pool tables `SaleSmall` and `Product`, which is cleaned and transformed for training.
+   
+   - Principal Components Analysis (PCA) is used to preform dimensionality reduction. You will then train the model in the notebook using XGBoost, and then test the model.
 
-### Task 4: Leverage Automated ML to create and deploy a Product Seasonality Classifier model
+   - As you have linked the Synapse and AML workspaces you will use the AutoML feature of AML which automates and speeds up the model development process. AutoML creates a number of pipelines in parallel that try different algorithms and parameters for you. The service iterates through ML algorithms paired with feature selections, where each iteration produces a model with a training score. The higher the score, the better the model is considered to "fit" your data. It will stop once it hits the exit criteria defined in the experiment.
 
-1. In Azure Machine Learning (AML) Studio, select **Experiments** from the left menu, then expand the **+ Create** button, and select **Automated ML run**.
+   - >Cell 20 requires you to enter your Azure Subcription ID, the Resource Group name of your Azure Machine Learning Workspace and the Workspace name. These are used by Synapse to submit an Automated ML experiment to Azure Machine Learning. The training compute will be Synapse Spark cluster. These values can be found in Azure Portal in your AML Workspace overview page.
+   ![The Synapse Studio Notebook Cell20 is shown.](media/Synapse_Notebook_cell20.png "The Synapse Studio Notebook Cell20")
 
-    ![The AML Studio Experiments screen is shown with the Create button expanded and the Automated ML run item selected.](media/aml_experiment_create.png "The AML Studio Experiments screen")
+   - To use the best fitted model from the experiment in Synapse SQL Pool the model is returned in ONNX format, which is a Synapse requirement.
 
-2. In the previous task, we registered our PCA dataframe (named **pcadata**) to use with Auto ML. Select **pcadata** from the list and select **Next**.
+   - The model is then registered in Azure Machine Learning workspace using MLflow. 
+   
+   - You can also test the model predictions in the notebook using onnxruntime package.
 
-    ![On the Select dataset screen, the pcadata item is selected from the dataset list.](media/aml_automl_datasetselection.png "The select dataset form is displayed")
+3. **Run all cells in the notebook**.
 
-3. On the **Configure run** screen, select the **Create a new compute** link beneath the **Select compute cluster** field.
+### Task 5: Launch predictions with the SQL scoring wizard
 
-4. Back on the **Configure run** form, name the experiment **ProductSeasonalityClassifier**, select **Seasonality** as the **Target column** and select **automlcluster** as the compute cluster. Select **Next**.
+1. In Azure Synapse Studio, go to **Data > Workspace**. Open the SQL scoring wizard by right-clicking the dedicated SQL pool table `wwi_mcw.ProductPCA`. Select **Machine Learning > Enrich with existing model**.
 
-    ![The Configure run form is displayed populated with the preceding values.](media/automl_experiment_configurerun.png "The Configure run form")
+   ![The Synapse Studio SQL Scoring Wizard launch is shown.](media/Synapse-studio-sql-scoring-wizard.png "The Synapse Studio SQL Scoring Wizard")
 
-5. On the **Select task type** screen, select **Classification**, then choose **Finish**.
+   >[!Note] The machine learning option does not appear unless you have a linked service created for Azure Machine Learning.
 
-    ![The Select task type screen is displayed with the Classification item selected.](media/aml_automlrun_tasktypeform.png "The Select task type screen")
+2. Select a linked Azure Machine Learning workspace in the drop-down box. This step loads a list of machine learning models from the model registry of the chosen Azure Machine Learning workspace. Currently, only ONNX models are supported, so this step will display only ONNX models.
 
-6. The experiment will then be run. It will take approximately 20-25 minutes for it to complete. Once it has completed, it will display the run results details. In the **Best model summary** box, select the **Algorithm name** link.
+3. Select the model that you just trained, and then select **Continue**.
 
-    ![The Run is shown as completed and the link below Algorithm name in the Best model summary box is selected.](media/aml_automl_run_bestmodel_details.png "Completed AutoML run details")
+   ![The Syanpse SQL Scoring Wizard choose model screen is shown](media/Synapse-sql-scoring-wizard-choose-model.png "SQL Scoring Wizard choose model")
 
-7. On the Model run screen, select **Deploy** from the top toolbar.
+4. Map the table columns to the model inputs and specify the model outputs. As the model has been registered with MLflow the format and the model signature is populated, and the mapping has been done automatically using a logic based on the similarity of names. The interface also supports manual mapping.
 
-    ![The specific model run screen is shown with the Deploy button selected from the top toolbar.](media/aml_automl_deploybestmodel.png "The best model run")
+   Change the **Input Type** for all input columns to `real`, leaving the Output mapping unchanged. 
 
-8. On the **Deploy a model** blade, configure the deployment as follows, then select **Deploy**:
+   Select **Continue**.
 
-    | Field | Value |
-    |--------------|---------------|
-    | Name | productseasonalityclassifier |
-    | Description | Product Seasonality Classifier. |
-    | Compute type | Azure Container Instance |
-    | Enable authentication | Off |
+   ![The Synapse Studio SQL Scoring Wizard map inputs and outputs is shown.](media/Synapse-sql-scoring-map-inputs.png "The Synapse Studio SQL Scoring Wizard input/output mapping")
 
-    ![The Deploy a model blade is shown populated with the preceding values.](media/aml_automl_deploymodelaci.png "The Deploy a model blade")
+5. The SQL Scoring Wizard generates T-SQL code to consume the model, which is wrapped inside a stored procedure. This next screen asks you to provide that stored procedure name, as well as a table in which to store the model. The model binary, including metadata (version, description, and other information), will be physically copied from Azure Machine Learning to this table in the dedicated SQL pool.
 
-9. Once deployed, the Model summary will be displayed. You can view the endpoint by selecting the **Deploy status** link.
+   For the stored procedure provide a schema and a name. For the target table to store the model, select **Create new** and provide a schema and a name.
+   Select **Deploy model + open script** to continue.
 
-    ![The successful model deployment was successful and the Deploy status link is highlighted.](media/aml_automl_modeldeploysuccess.png "The Model summary screen")
+![The Synapse Studio SQL Scoring Wizard create stored procedure is shown.](media/Synapse-sql-scoring-stored-procedure.png "The Synapse Studio SQL Scoring Wizard Stored Procedure screen")
 
-10. Review the details of the deployed model service endpoint.
+6. After the script is generated, select Run to execute the scoring and get predictions.
 
-    ![The service endpoint details screen is displayed.](media/aml_automl_modelserviceendpointdetails.png "The service endpoint details screen")
+   ![The Synapse Studio SQL Scoring wizard T-SQL Predict](media/Synapse-sql-scoring-predictions.png "The Synapse SQL Scoring Wizard T-SQL Predict")
 
 ## Exercise 8: Monitoring
 
