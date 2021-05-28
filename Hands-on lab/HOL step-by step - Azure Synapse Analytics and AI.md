@@ -35,6 +35,7 @@ Microsoft and the trademarks listed at <https://www.microsoft.com/en-us/legal/in
   - [Resource naming throughout this lab](#resource-naming-throughout-this-lab)
   - [Exercise 1: Accessing the Azure Synapse Analytics workspace](#exercise-1-accessing-the-azure-synapse-analytics-workspace)
     - [Task 1: Launching Synapse Studio](#task-1-launching-synapse-studio)
+    - [Task 2: Set Spark Pool libraries](#task-2-Set-Spark-Pool-libraries)
   - [Exercise 2: Create and populate the supporting tables in the SQL Pool](#exercise-2-create-and-populate-the-supporting-tables-in-the-sql-pool)
     - [Task 1: Create the sale table](#task-1-create-the-sale-table)
     - [Task 2: Populate the sale table](#task-2-populate-the-sale-table)
