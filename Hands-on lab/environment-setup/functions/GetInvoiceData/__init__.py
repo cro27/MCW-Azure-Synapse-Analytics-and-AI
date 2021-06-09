@@ -52,7 +52,7 @@ def process_form(value):
                     {
                         "recordId": recordId,
                         "data":{
-                            "text": errorr
+                            "text": error
                         }
                     }
                 ) 
