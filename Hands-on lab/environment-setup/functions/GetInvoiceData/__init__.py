@@ -107,7 +107,7 @@ def process_form(value):
                     {
                         "recordId": recordId,
                         "data":{
-                            "text": resp_json
+                            "text": resp.json()
                         }
                     }
                 ) 
